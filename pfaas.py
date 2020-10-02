@@ -6,27 +6,32 @@ class gfaas:
         # Firstly, we'll save the function body to file
         import marshal
 
-        with open("gfaas_module", "wb") as f:
+        module_name = "gfaas_module"
+        with open(module_name, "wb") as f:
             marshal.dump(func.__code__, f)
 
         async def inner(*args, **kwargs):
-            import types
             import json
 
             # Save input args to files
+            saved_args = []
             for i, arg in enumerate(args):
-                with open("arg{}".format(i), "w") as f:
+                arg_name = "arg{}".format(i)
+                with open(arg_name, "w") as f:
                     json.dump(arg, f)
+                saved_args.append(arg_name)
 
             if self.run_local:
+                import types
+
                 # Load func from file
-                with open("gfaas_module", "rb") as f:
+                with open(module_name, "rb") as f:
                     code = marshal.load(f)
 
                 # Load input args
                 parsed_args = []
-                for fn in ["arg{}".format(i) for i in range(len(args))]:
-                    with open(fn, "r") as f:
+                for arg_name in saved_args:
+                    with open(arg_name, "r") as f:
                         arg = json.load(f)
                         parsed_args.append(arg)
 
@@ -35,7 +40,42 @@ class gfaas:
                 return func(*parsed_args)
 
             else:
-                # TODO add Golem glue code
-                raise NotImplementedError("Yagna glue code not implemented yet!")
+                from yapapi.runner import Engine, Task, vm
+                from yapapi.runner.ctx import WorkContext
+                from datetime import timedelta
+
+                package = await vm.repo(
+                    image_hash = "deadbeef",
+                    min_mem_gib = 1.5,
+                    min_storage_gib = 2.0,
+                )
+
+                async def worker(ctx: WorkContext, task):
+                    ctx.send_file(module_name, "/golem/input/func")
+                    data = task.data
+                    remote_args = []
+
+                    for arg in saved_args:
+                        remote_arg = "/golem/input/{}".format(arg)
+                        ctx.send_file(data[arg], remote_arg)
+                        remote_args.append(remote_arg)
+
+                    ctx.run("python3 /golem/runner.py", "/golem/input/func", *remote_args)
+                    ctx.download_file(f"/golem/output/out", f"out")
+                    await ctx.commit(task)
+                    task.accept_task()
+                    ctx.log("done")
+
+                init_overhead: timedelta = timedelta(minutes = 3)
+
+                async with Engine(
+                    package = package,
+                    max_workers = 3,
+                    budget = 100.0,
+                    timeout = init_overhead + timedelta(minutes = 1),
+                    subnet_tag = "testnet",
+                ) as engine:
+                    async for progress in engine.map(worker, [Task(data=task)]):
+                        print("progress=", progress)
 
         return inner
