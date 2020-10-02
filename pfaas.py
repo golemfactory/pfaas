@@ -45,25 +45,27 @@ class gfaas:
                 from datetime import timedelta
 
                 package = await vm.repo(
-                    image_hash = "deadbeef",
+                    image_hash = "4f3d7f3342b27833ab76f66dfa146c318162dbd2841035e4edf4a04e",
                     min_mem_gib = 1.5,
                     min_storage_gib = 2.0,
                 )
 
-                async def worker(ctx: WorkContext, task):
-                    ctx.send_file(module_name, "/golem/input/func")
-                    data = task.data
-                    remote_args = []
+                async def worker(ctx: WorkContext, tasks):
+                    ctx.log("starting")
+                    async for task in tasks:
+                        ctx.send_file(module_name, f"/golem/input/func")
+                        remote_args = []
 
-                    for arg in saved_args:
-                        remote_arg = "/golem/input/{}".format(arg)
-                        ctx.send_file(data[arg], remote_arg)
-                        remote_args.append(remote_arg)
+                        for arg in saved_args:
+                            remote_arg = "/golem/input/{}".format(arg)
+                            ctx.send_file(arg, remote_arg)
+                            remote_args.append(remote_arg)
 
-                    ctx.run("python3 /golem/runner.py", "/golem/input/func", *remote_args)
-                    ctx.download_file(f"/golem/output/out", f"out")
-                    await ctx.commit(task)
-                    task.accept_task()
+                        ctx.run(f"python3 /golem/runner.py", f"/golem/input/func", *remote_args)
+                        ctx.download_file(f"/golem/output/out", f"out")
+                        yield ctx.commit(task)
+                        task.accept_task()
+
                     ctx.log("done")
 
                 init_overhead: timedelta = timedelta(minutes = 3)
@@ -75,7 +77,7 @@ class gfaas:
                     timeout = init_overhead + timedelta(minutes = 1),
                     subnet_tag = "testnet",
                 ) as engine:
-                    async for progress in engine.map(worker, [Task(data=task)]):
+                    async for progress in engine.map(worker, [Task(data = None)]):
                         print("progress=", progress)
 
         return inner
