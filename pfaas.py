@@ -5,7 +5,7 @@ def gfaas(func):
     with open("gfaas_module", "wb") as f:
         marshal.dump(func.__code__, f)
 
-    def inner(*args, **kwargs):
+    async def inner(*args, **kwargs):
         import types
 
         # TODO add Golem glue code
