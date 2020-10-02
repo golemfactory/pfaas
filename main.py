@@ -1,7 +1,7 @@
 from pfaas import gfaas
 import asyncio
 
-@gfaas
+@gfaas(run_local = True)
 def hello(msg):
     return msg.upper()
 
