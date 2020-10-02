@@ -45,7 +45,7 @@ class gfaas:
                 from datetime import timedelta
 
                 package = await vm.repo(
-                    image_hash = "4f3d7f3342b27833ab76f66dfa146c318162dbd2841035e4edf4a04e",
+                    image_hash = "0dd0509197ad6b9f46eec8ba8f28b8b6c8700edc8f5bbc068974e2b4",
                     min_mem_gib = 1.5,
                     min_storage_gib = 2.0,
                 )
