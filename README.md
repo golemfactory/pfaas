@@ -35,9 +35,8 @@ def hello(msg: str) -> str:
     return msg.upper()
 
 async def main(msg: str):
-    await asyncio.sleep(1)
     resp = await hello(msg)
-    print(f"in = {msg}, out={resp}")
+    print(f"in={msg}, out={resp}")
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
