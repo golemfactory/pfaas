@@ -1,43 +1,45 @@
+import json
+import marshal
+import tempfile
+from pathlib import PurePath
+
 class remote_fn:
     def __init__(self, run_local: bool = False):
         self.run_local = run_local
 
     def __call__(self, func):
-        # Firstly, we'll save the function body to file
-        import marshal
-
-        module_name = "gfaas_module"
-        with open(module_name, "wb") as f:
-            marshal.dump(func.__code__, f)
-
         async def inner(*args, **kwargs):
-            import json
+            # Firstly, we'll save the function body to file
+            tmpdir = tempfile.TemporaryDirectory()
+            module_path = PurePath(f"{tmpdir.name}/gfaas_module")
+            with open(module_path, "wb") as f:
+                marshal.dump(func.__code__, f)
 
             # Save input args to files
             saved_args = []
             for i, arg in enumerate(args):
-                arg_name = f"arg{i}"
-                with open(arg_name, "w") as f:
+                arg_path = PurePath(f"{tmpdir.name}/arg{i}")
+                with open(arg_path, "w") as f:
                     json.dump(arg, f)
-                saved_args.append(arg_name)
+                saved_args.append(arg_path)
 
             if self.run_local:
                 import types
 
                 # Load func from file
-                with open(module_name, "rb") as f:
+                with open(module_path, "rb") as f:
                     code = marshal.load(f)
 
                 # Load input args
                 parsed_args = []
-                for arg_name in saved_args:
-                    with open(arg_name, "r") as f:
+                for arg_path in saved_args:
+                    with open(arg_path, "r") as f:
                         arg = json.load(f)
                         parsed_args.append(arg)
 
                 # Invoke
-                func = types.FunctionType(code, globals(), "remote")
-                return func(*parsed_args)
+                deser = types.FunctionType(code, globals(), "remote")
+                return deser(*parsed_args)
 
             else:
                 from yapapi.runner import Engine, Task, vm
@@ -51,21 +53,22 @@ class remote_fn:
                     min_mem_gib = 0.5,
                     min_storage_gib = 2.0,
                 )
+                out_path = PurePath(f"{tmpdir.name}/out")
 
                 async def worker(ctx: WorkContext, tasks):
                     async for task in tasks:
-                        ctx.send_file(module_name, "/golem/input/func")
+                        ctx.send_file(module_path, "/golem/input/func")
                         remote_args = []
 
-                        for arg in saved_args:
+                        for arg_path in saved_args:
                             remote_arg = f"/golem/input/{arg}"
-                            ctx.send_file(arg, remote_arg)
+                            ctx.send_file(arg_path, remote_arg)
                             remote_args.append(remote_arg)
 
                         ctx.run("python", "/golem/runner.py", "/golem/input/func", *remote_args)
-                        ctx.download_file("/golem/output/out", "out")
+                        ctx.download_file("/golem/output/out", out_path)
                         yield ctx.commit()
-                        task.accept_task(result="out")
+                        task.accept_task(result=out_path)
 
                     ctx.log("done")
 
@@ -82,7 +85,7 @@ class remote_fn:
                     async for progress in engine.map(worker, [Task(data = None)]):
                         print(f"progress={progress}")
 
-                with open("out", "r") as f:
+                with open(out_path, "r") as f:
                     out = json.load(f)
 
                 return out
