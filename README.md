@@ -84,7 +84,7 @@ is convenient to first test the app locally in search of bugs and errors. This i
 possible with `pfaas`. In order to force your app to run locally, simply pass `run_local = True`
 as argument to `pfaas.remote_fn` decorator
 
-```
+```python
 from pfaas import remote_fn
 
 @remote_fn(run_local = True)
