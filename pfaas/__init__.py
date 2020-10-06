@@ -1,5 +1,5 @@
-class gfaas:
-    def __init__(self, run_local = False):
+class remote_fn:
+    def __init__(self, run_local: bool = False):
         self.run_local = run_local
 
     def __call__(self, func):
@@ -16,7 +16,7 @@ class gfaas:
             # Save input args to files
             saved_args = []
             for i, arg in enumerate(args):
-                arg_name = "arg{}".format(i)
+                arg_name = f"arg{i}"
                 with open(arg_name, "w") as f:
                     json.dump(arg, f)
                 saved_args.append(arg_name)
@@ -42,29 +42,30 @@ class gfaas:
             else:
                 from yapapi.runner import Engine, Task, vm
                 from yapapi.runner.ctx import WorkContext
+                from yapapi.log import enable_default_logger, log_summary
                 from datetime import timedelta
 
+                enable_default_logger()
                 package = await vm.repo(
-                    image_hash = "0dd0509197ad6b9f46eec8ba8f28b8b6c8700edc8f5bbc068974e2b4",
-                    min_mem_gib = 1.5,
+                    image_hash = "74e9cdb5a5aa2c73a54f9ebf109986801fe2d4f026ea7d9fbfcca221",
+                    min_mem_gib = 0.5,
                     min_storage_gib = 2.0,
                 )
 
                 async def worker(ctx: WorkContext, tasks):
-                    ctx.log("starting")
                     async for task in tasks:
-                        ctx.send_file(module_name, f"/golem/input/func")
+                        ctx.send_file(module_name, "/golem/input/func")
                         remote_args = []
 
                         for arg in saved_args:
-                            remote_arg = "/golem/input/{}".format(arg)
+                            remote_arg = f"/golem/input/{arg}"
                             ctx.send_file(arg, remote_arg)
                             remote_args.append(remote_arg)
 
-                        ctx.run(f"python3 /golem/runner.py", f"/golem/input/func", *remote_args)
-                        ctx.download_file(f"/golem/output/out", f"out")
-                        yield ctx.commit(task)
-                        task.accept_task()
+                        ctx.run("python", "/golem/runner.py", "/golem/input/func", *remote_args)
+                        ctx.download_file("/golem/output/out", "out")
+                        yield ctx.commit()
+                        task.accept_task(result="out")
 
                     ctx.log("done")
 
@@ -74,10 +75,16 @@ class gfaas:
                     package = package,
                     max_workers = 3,
                     budget = 100.0,
-                    timeout = init_overhead + timedelta(minutes = 1),
-                    subnet_tag = "testnet",
+                    timeout = init_overhead + timedelta(minutes = 10),
+                    subnet_tag = "devnet-alpha.2",
+                    event_emitter = log_summary(),
                 ) as engine:
                     async for progress in engine.map(worker, [Task(data = None)]):
-                        print("progress=", progress)
+                        print(f"progress={progress}")
+
+                with open("out", "r") as f:
+                    out = json.load(f)
+
+                return out
 
         return inner

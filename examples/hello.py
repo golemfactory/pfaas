@@ -1,11 +1,11 @@
-from pfaas import gfaas
+from pfaas import remote_fn
 import asyncio
 
-@gfaas()
-def hello(msg):
+@remote_fn()
+def hello(msg: str) -> str:
     return msg.upper()
 
-async def main(msg):
+async def main(msg: str):
     await asyncio.sleep(1)
     resp = await hello(msg)
     print("in={}, out={}".format(msg, resp))
