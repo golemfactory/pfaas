@@ -12,7 +12,7 @@ sister project to [gfaas].
 [Golem Network]: https://golem.network
 [gfaas]: https://github.com/golemfactory/gfaas
 
-**Disclaimer:** Use with extra care as this package is highly experimental.
+⚠️ **Disclaimer:** Use with extra care as this package is highly experimental. ⚠️
 
 ## Quick start
 
