@@ -61,7 +61,7 @@ class remote_fn:
                         remote_args = []
 
                         for arg_path in saved_args:
-                            remote_arg = f"/golem/input/{arg}"
+                            remote_arg = f"/golem/input/{arg_path}"
                             ctx.send_file(arg_path, remote_arg)
                             remote_args.append(remote_arg)
 
