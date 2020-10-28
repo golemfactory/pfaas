@@ -1,11 +1,21 @@
 import json
+from datetime import timedelta
 import marshal
 import tempfile
 from pathlib import PurePath
 
 class remote_fn:
-    def __init__(self, run_local: bool = False):
+    def __init__(
+            self,
+            run_local: bool = False,
+            budget: float = 100.0,
+            timeout: timedelta = timedelta(minutes=10),
+            subnet: str = "devnet-alpha.2",
+        ):
         self.run_local = run_local
+        self.budget = budget
+        self.timeout = timeout
+        self.subnet = subnet
 
     def __call__(self, func):
         async def inner(*args, **kwargs):
@@ -45,7 +55,6 @@ class remote_fn:
                 from yapapi.runner import Engine, Task, vm
                 from yapapi.runner.ctx import WorkContext
                 from yapapi.log import enable_default_logger, log_summary
-                from datetime import timedelta
 
                 enable_default_logger()
                 package = await vm.repo(
@@ -77,9 +86,9 @@ class remote_fn:
                 async with Engine(
                     package = package,
                     max_workers = 3,
-                    budget = 100.0,
-                    timeout = init_overhead + timedelta(minutes = 10),
-                    subnet_tag = "devnet-alpha.2",
+                    budget = self.budget,
+                    timeout = init_overhead + self.timeout,
+                    subnet_tag = self.subnet,
                     event_emitter = log_summary(),
                 ) as engine:
                     async for progress in engine.map(worker, [Task(data = None)]):
