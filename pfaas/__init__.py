@@ -85,7 +85,7 @@ class remote_fn:
 
                 async with Engine(
                     package = package,
-                    max_workers = 3,
+                    max_workers = 1,
                     budget = self.budget,
                     timeout = init_overhead + self.timeout,
                     subnet_tag = self.subnet,
