@@ -16,19 +16,19 @@ class remote_fn:
         self.budget = budget
         self.timeout = timeout
         self.subnet = subnet
-        self.tmpdir = tempfile.TemporaryDirectory()
 
     def __call__(self, func):
         async def inner(*args, **kwargs):
             # Firstly, we'll save the function body to file
-            module_path = PurePath(f"{self.tmpdir.name}/gfaas_module")
+            tmpdir = tempfile.TemporaryDirectory()
+            module_path = PurePath(f"{tmpdir.name}/gfaas_module")
             with open(module_path, "wb") as f:
                 marshal.dump(func.__code__, f)
 
             # Save input args to files
             saved_args = []
             for i, arg in enumerate(args):
-                arg_path = PurePath(f"{self.tmpdir.name}/arg{i}")
+                arg_path = PurePath(f"{tmpdir.name}/arg{i}")
                 with open(arg_path, "w") as f:
                     json.dump(arg, f)
                 saved_args.append(arg_path)
@@ -62,7 +62,7 @@ class remote_fn:
                     min_mem_gib = 0.5,
                     min_storage_gib = 2.0,
                 )
-                out_path = PurePath(f"{self.tmpdir.name}/out")
+                out_path = PurePath(f"{tmpdir.name}/out")
 
                 async def worker(ctx: WorkContext, tasks):
                     async for task in tasks:
@@ -98,5 +98,4 @@ class remote_fn:
                     out = json.load(f)
 
                 return out
-
         return inner
