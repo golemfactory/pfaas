@@ -76,6 +76,39 @@ async def hello(input: str) -> str
 
 Therefore, it is important to remember that you need to run the function in an async block.
 
+### Specifying Golem's configuration parameters
+
+You can currently set the following configuration parameters directly via `pfaas.remote_fn`
+decorator:
+
+* (maximum) budget in NGNT (defaults to 100):
+
+```python
+@remote_fn(budget=100.0)
+def hello(input: str) -> str
+```
+
+* timeout as `timedelta` (defaults to 10 minutes):
+
+```python
+@remote_fn(timeout=timedelta(minutes=10))
+def hello(input: str) -> str
+```
+
+* subnet tag (defaults to "devnet-alpha.2"):
+
+```python
+@remote_fn(subnet="devnet-alpha.2")
+def hello(input: str) -> str
+```
+
+Of course, nobody stops you from setting any number of parameters at once
+
+```python
+@remote_fn(budget=10.0, subnet="my_subnet")
+def hello(input: str) -> str
+```
+
 ## Notes on running your app locally (for testing)
 
 It is well known that prior to launching our app on some distributed network of nodes, it
@@ -86,7 +119,7 @@ as argument to `pfaas.remote_fn` decorator
 ```python
 from pfaas import remote_fn
 
-@remote_fn(run_local = True)
+@remote_fn(run_local=True)
 def hello(msg: str) -> str
 ```
 
