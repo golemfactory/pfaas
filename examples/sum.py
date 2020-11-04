@@ -1,7 +1,7 @@
 from pfaas import remote_fn
 import asyncio
 
-@remote_fn()
+@remote_fn(run_local=True)
 def partial_sum(xs: [int]) -> int:
     return sum(xs)
 
@@ -20,7 +20,7 @@ async def main(xs: [int], size: int):
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    task = loop.create_task(main(list(range(100)), 25))
+    task = loop.create_task(main(list(range(100)), 10))
     
     try:
         asyncio.get_event_loop().run_until_complete(task)

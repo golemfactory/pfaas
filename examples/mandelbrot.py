@@ -4,7 +4,7 @@ import asyncio
 import math
 import png
 
-@remote_fn()
+@remote_fn(run_local=True)
 def compute_rectangle(n: int, start_y: int, end_y: int, width: int, height: int) -> (int, [int]):
     RE_START: float = -2.0
     RE_END: float = 1.0
