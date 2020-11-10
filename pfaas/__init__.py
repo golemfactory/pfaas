@@ -4,6 +4,7 @@ import tempfile
 from pathlib import PurePath
 import marshal
 
+from typing import List, Tuple
 
 def _local_remote_fn(module_path, *args):
     import marshal
@@ -26,11 +27,13 @@ class remote_fn:
             timeout: timedelta = timedelta(minutes=10),
             subnet: str = "devnet-alpha.2",
             max_workers: int = 2,
+            extrafiles: List[Tuple[PurePath, str]] = []
         ):
         self.run_local = run_local
         self.budget = budget
         self.timeout = timeout
         self.subnet = subnet
+        self.extrafiles = extrafiles
 
         if run_local:
             from concurrent.futures import ProcessPoolExecutor
@@ -79,6 +82,10 @@ class remote_fn:
                 async def worker(ctx: WorkContext, tasks):
                     async for task in tasks:
                         ctx.send_file(module_path, "/golem/input/func")
+                        for local_path, remote_file in self.extrafiles:
+                            remote_path = PurePath("/golem/input")/remote_file
+                            print(f"send_file: {local_path} -> {remote_path}")
+                            ctx.send_file(local_path, remote_path)
                         remote_args = []
 
                         for (i, arg_path) in enumerate(saved_args):
