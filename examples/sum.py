@@ -1,7 +1,7 @@
 from pfaas import remote_fn
 import asyncio
 
-@remote_fn(run_local=True)
+@remote_fn()
 def partial_sum(xs: [int]) -> int:
     return sum(xs)
 
